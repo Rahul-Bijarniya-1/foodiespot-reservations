@@ -1,0 +1,402 @@
+[
+  {
+    "id": "rest_1",
+    "name": "West Side Thai ",
+    "cuisine": "Thai",
+    "location": "West Side",
+    "capacity": 47,
+    "price_range": 3,
+    "rating": 3.0,
+    "description": "West Side Thai  offers authentic Thai cuisine in West Side. Seating capacity of 47 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "11:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_2",
+    "name": "The Delicious American",
+    "cuisine": "American",
+    "location": "Downtown",
+    "capacity": 20,
+    "price_range": 2,
+    "rating": 3.9,
+    "description": "The Delicious American offers authentic American cuisine in Downtown. Seating capacity of 20 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "10:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "8:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_3",
+    "name": "The Amazing Chinese",
+    "cuisine": "Chinese",
+    "location": "Downtown",
+    "capacity": 85,
+    "price_range": 2,
+    "rating": 3.6,
+    "description": "The Amazing Chinese offers authentic Chinese cuisine in Downtown. Seating capacity of 85 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "22:00"
+      },
+      "weekend": {
+        "open": "10:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_4",
+    "name": "West Side American ",
+    "cuisine": "American",
+    "location": "West Side",
+    "capacity": 80,
+    "price_range": 4,
+    "rating": 4.3,
+    "description": "West Side American  offers authentic American cuisine in West Side. Seating capacity of 80 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "weekend": {
+        "open": "8:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_5",
+    "name": "The Delicious Thai",
+    "cuisine": "Thai",
+    "location": "Midtown",
+    "capacity": 20,
+    "price_range": 1,
+    "rating": 3.1,
+    "description": "The Delicious Thai offers authentic Thai cuisine in Midtown. Seating capacity of 20 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "21:00"
+      },
+      "weekend": {
+        "open": "11:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_6",
+    "name": "West Side Chinese Bistro",
+    "cuisine": "Chinese",
+    "location": "West Side",
+    "capacity": 28,
+    "price_range": 3,
+    "rating": 5.0,
+    "description": "West Side Chinese Bistro offers authentic Chinese cuisine in West Side. Seating capacity of 28 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "22:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "23:00"
+      }
+    }
+  },
+  {
+    "id": "rest_7",
+    "name": "The Tasty Italian",
+    "cuisine": "Italian",
+    "location": "Waterfront",
+    "capacity": 92,
+    "price_range": 4,
+    "rating": 3.9,
+    "description": "The Tasty Italian offers authentic Italian cuisine in Waterfront. Seating capacity of 92 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "10:00",
+        "close": "21:00"
+      },
+      "weekend": {
+        "open": "10:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_8",
+    "name": "The Tasty Indian",
+    "cuisine": "Indian",
+    "location": "West Side",
+    "capacity": 77,
+    "price_range": 4,
+    "rating": 4.0,
+    "description": "The Tasty Indian offers authentic Indian cuisine in West Side. Seating capacity of 77 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "20:00"
+      },
+      "weekend": {
+        "open": "10:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_9",
+    "name": "The Amazing Thai",
+    "cuisine": "Thai",
+    "location": "West Side",
+    "capacity": 39,
+    "price_range": 2,
+    "rating": 4.0,
+    "description": "The Amazing Thai offers authentic Thai cuisine in West Side. Seating capacity of 39 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "21:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_10",
+    "name": "The Amazing Chinese",
+    "cuisine": "Chinese",
+    "location": "West Side",
+    "capacity": 62,
+    "price_range": 4,
+    "rating": 4.0,
+    "description": "The Amazing Chinese offers authentic Chinese cuisine in West Side. Seating capacity of 62 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_11",
+    "name": "The Tasty French",
+    "cuisine": "French",
+    "location": "Uptown",
+    "capacity": 26,
+    "price_range": 4,
+    "rating": 4.0,
+    "description": "The Tasty French offers authentic French cuisine in Uptown. Seating capacity of 26 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_12",
+    "name": "The Delicious American",
+    "cuisine": "American",
+    "location": "West Side",
+    "capacity": 86,
+    "price_range": 2,
+    "rating": 3.3,
+    "description": "The Delicious American offers authentic American cuisine in West Side. Seating capacity of 86 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "20:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_13",
+    "name": "The Tasty Italian",
+    "cuisine": "Italian",
+    "location": "Waterfront",
+    "capacity": 99,
+    "price_range": 4,
+    "rating": 5.0,
+    "description": "The Tasty Italian offers authentic Italian cuisine in Waterfront. Seating capacity of 99 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "10:00",
+        "close": "20:00"
+      },
+      "weekend": {
+        "open": "11:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_14",
+    "name": "Uptown Italian Restaurant",
+    "cuisine": "Italian",
+    "location": "Uptown",
+    "capacity": 94,
+    "price_range": 4,
+    "rating": 3.2,
+    "description": "Uptown Italian Restaurant offers authentic Italian cuisine in Uptown. Seating capacity of 94 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "23:00"
+      }
+    }
+  },
+  {
+    "id": "rest_15",
+    "name": "The Tasty Thai",
+    "cuisine": "Thai",
+    "location": "Waterfront",
+    "capacity": 32,
+    "price_range": 1,
+    "rating": 3.6,
+    "description": "The Tasty Thai offers authentic Thai cuisine in Waterfront. Seating capacity of 32 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "22:00"
+      },
+      "weekend": {
+        "open": "10:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_16",
+    "name": "The Tasty Japanese",
+    "cuisine": "Japanese",
+    "location": "East Side",
+    "capacity": 83,
+    "price_range": 3,
+    "rating": 3.8,
+    "description": "The Tasty Japanese offers authentic Japanese cuisine in East Side. Seating capacity of 83 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "21:00"
+      },
+      "weekend": {
+        "open": "10:00",
+        "close": "23:00"
+      }
+    }
+  },
+  {
+    "id": "rest_17",
+    "name": "The Delicious Indian",
+    "cuisine": "Indian",
+    "location": "Midtown",
+    "capacity": 83,
+    "price_range": 2,
+    "rating": 3.7,
+    "description": "The Delicious Indian offers authentic Indian cuisine in Midtown. Seating capacity of 83 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "22:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_18",
+    "name": "The Delicious Indian",
+    "cuisine": "Indian",
+    "location": "Midtown",
+    "capacity": 97,
+    "price_range": 4,
+    "rating": 3.2,
+    "description": "The Delicious Indian offers authentic Indian cuisine in Midtown. Seating capacity of 97 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "11:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "9:00",
+        "close": "22:00"
+      }
+    }
+  },
+  {
+    "id": "rest_19",
+    "name": "The Delicious French",
+    "cuisine": "French",
+    "location": "East Side",
+    "capacity": 32,
+    "price_range": 3,
+    "rating": 4.6,
+    "description": "The Delicious French offers authentic French cuisine in East Side. Seating capacity of 32 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "21:00"
+      },
+      "weekend": {
+        "open": "10:00",
+        "close": "21:00"
+      }
+    }
+  },
+  {
+    "id": "rest_20",
+    "name": "The Tasty French",
+    "cuisine": "French",
+    "location": "West Side",
+    "capacity": 90,
+    "price_range": 1,
+    "rating": 3.9,
+    "description": "The Tasty French offers authentic French cuisine in West Side. Seating capacity of 90 and a cozy atmosphere.",
+    "hours": {
+      "weekday": {
+        "open": "12:00",
+        "close": "23:00"
+      },
+      "weekend": {
+        "open": "8:00",
+        "close": "23:00"
+      }
+    }
+  }
+]
