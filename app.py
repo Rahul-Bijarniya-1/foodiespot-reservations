@@ -12,12 +12,18 @@ from utils import (
     format_restaurant_list,
     format_restaurant_details,
     format_available_times,
-    format_reservation_confirmation
+    format_reservation_confirmation,
+    format_reservation_details,
+    format_time,
+    get_base_prompt,
+    get_search_prompt,
+    get_reservation_prompt,
+    get_confirmation_prompt
 )
 import tools
 
-# Load environment variables
-load_dotenv()
+# Load environment variables with override to ensure .env takes precedence
+load_dotenv(override=True)
 
 # Check environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -173,6 +179,18 @@ def register_tools():
     
     llm.register_tools(tool_definitions)
 
+# Helper function to format preferences
+def format_preferences(preferences):
+    if not preferences:
+        return "No preferences set."
+    
+    result = ""
+    for key, value in preferences.items():
+        formatted_key = key.replace("_", " ").title()
+        result += f"- **{formatted_key}:** {value}\n"
+    
+    return result
+
 # Execute a tool call from the LLM
 def execute_tool_call(tool_call):
     try:
@@ -308,15 +326,35 @@ def main():
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
                     # Format messages for the LLM
+                    current_date = datetime.now().strftime('%Y-%m-%d')
+                    
+                    # Choose the appropriate prompt based on message content
+                    user_message = prompt.lower()
+                    if any(word in user_message for word in ["find", "search", "looking", "cuisine", "restaurant"]):
+                        # Use search-focused prompt
+                        system_prompt = get_search_prompt(user_name=st.session_state.user_name)
+                    elif any(word in user_message for word in ["book", "reserve", "reservation", "time", "date"]):
+                        # Use reservation-focused prompt
+                        system_prompt = get_reservation_prompt(
+                            user_name=st.session_state.user_name,
+                            current_date=current_date
+                        )
+                    else:
+                        # Use base prompt
+                        system_prompt = get_base_prompt(
+                            user_name=st.session_state.user_name,
+                            current_date=current_date
+                        )
+                    
                     messages = [
-                        {"role": "system", "content": f"You are a helpful restaurant reservation assistant for FoodieSpot. The user's name is {st.session_state.user_name}. Help them find restaurants and make reservations. Today's date is {datetime.now().strftime('%Y-%m-%d')}."},
+                        {"role": "system", "content": system_prompt},
                     ]
                     
                     # Add chat history (last 5 messages)
                     for msg in st.session_state.messages[-5:]:
                         messages.append({"role": msg["role"], "content": msg["content"]})
                     
-                    # Call process_message instead of chat directly
+                    # Call the LLM
                     try:
                         # For tool-enabled mode
                         content, tool_calls = llm.chat(messages, tools=True)
@@ -324,9 +362,27 @@ def main():
                         # Process tool calls if any
                         if tool_calls:
                             tool_responses = []
+                            
+                            # Track if we have a successful reservation for special handling
+                            successful_reservation = None
+                            reservation_restaurant = None
+                            
                             for tool_call in tool_calls:
                                 tool_response = execute_tool_call(tool_call)
                                 tool_responses.append(tool_response)
+                                
+                                # Check if this was a successful reservation
+                                if tool_call["function"]["name"] == "make_reservation":
+                                    arguments = json.loads(tool_call["function"]["arguments"])
+                                    if "Sorry, I couldn't make the reservation" not in tool_response:
+                                        # Get the reservation and restaurant for confirmation
+                                        reservations = data_store.get_all_reservations()
+                                        if reservations:
+                                            successful_reservation = reservations[-1]  # Most recent reservation
+                                            reservation_restaurant = tools.get_restaurant_details(
+                                                data_store=data_store,
+                                                restaurant_id=arguments.get("restaurant_id")
+                                            )
                                 
                                 # Add tool results to messages for context
                                 messages.append({
@@ -338,6 +394,17 @@ def main():
                                     "role": "tool",
                                     "tool_call_id": tool_call["id"],
                                     "content": tool_response
+                                })
+                            
+                            # If we have a successful reservation, add confirmation context
+                            if successful_reservation and reservation_restaurant:
+                                confirmation_prompt = get_confirmation_prompt(
+                                    successful_reservation, 
+                                    reservation_restaurant
+                                )
+                                messages.append({
+                                    "role": "system",
+                                    "content": confirmation_prompt
                                 })
                             
                             # Get final response with tool results
@@ -364,6 +431,50 @@ def main():
                         fallback_response = "I'm having trouble processing your request. Let me try a different approach."
                         st.markdown(fallback_response)
                         st.session_state.messages.append({"role": "assistant", "content": fallback_response})
+    
+    # Add a debug section to test reservations directly
+    if DEBUG and st.session_state.user_name:
+        with st.sidebar.expander("Debug: Test Reservation"):
+            with st.form("test_reservation"):
+                rest_id = st.text_input("Restaurant ID", "rest_1")
+                name = st.text_input("Customer Name", st.session_state.user_name)
+                date = st.date_input("Date").strftime("%Y-%m-%d")
+                time = st.time_input("Time").strftime("%H:%M")
+                party_size = st.number_input("Party Size", 1, 10, 2)
+                email = st.text_input("Email", "test@example.com")
+                submit = st.form_submit_button("Make Test Reservation")
+                
+                if submit:
+                    success, result = tools.make_reservation(
+                        data_store=data_store,
+                        restaurant_id=rest_id,
+                        customer_name=name,
+                        date=date,
+                        time=time,
+                        party_size=party_size,
+                        email=email
+                    )
+                    
+                    if success:
+                        restaurant = tools.get_restaurant_details(data_store=data_store, restaurant_id=rest_id)
+                        st.success(format_reservation_confirmation(result, restaurant))
+                        
+                        # Check if the reservation was saved correctly
+                        reservations = data_store.get_all_reservations()
+                        st.write(f"Current reservations: {len(reservations)}")
+                        
+                        # Display the reservation file contents
+                        if os.path.exists(data_store.reservation_file):
+                            st.write(f"Reservation file exists: {data_store.reservation_file}")
+                            try:
+                                with open(data_store.reservation_file, 'r') as f:
+                                    st.code(f.read())
+                            except Exception as e:
+                                st.error(f"Error reading file: {e}")
+                        else:
+                            st.error(f"Reservation file does not exist: {data_store.reservation_file}")
+                    else:
+                        st.error(f"Reservation failed: {result}")
 
 if __name__ == "__main__":
     main()

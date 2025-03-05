@@ -97,24 +97,11 @@ class DataStore:
         """Add or update a reservation"""
         try:
             # Ensure directory exists
-            import os
             os.makedirs(os.path.dirname(self.reservation_file), exist_ok=True)
         
             # Get current reservations
-            current_reservations = []
-            if os.path.exists(self.reservation_file):
-                try:
-                    with open(self.reservation_file, 'r') as f:
-                        data = json.load(f)
-                        for r_data in data:
-                            try:
-                                r = Reservation.from_dict(r_data)
-                                current_reservations.append(r)
-                            except Exception as e:
-                                print(f"Error parsing reservation: {e}")
-                except json.JSONDecodeError:
-                    print(f"Error reading reservation file, starting with empty list")
-        
+            current_reservations = self.get_all_reservations()
+            
             # Add new reservation to the list
             found = False
             for i, r in enumerate(current_reservations):
@@ -122,17 +109,17 @@ class DataStore:
                     current_reservations[i] = reservation
                     found = True
                     break
-        
+            
             if not found:
                 current_reservations.append(reservation)
-        
+            
             # Convert to dictionaries
             reservation_dicts = [r.to_dict() for r in current_reservations]
-        
-            # Save to file with pretty-printing
+            
+            # Save to file
             with open(self.reservation_file, 'w') as f:
                 json.dump(reservation_dicts, f, indent=2)
-        
+            
             print(f"Saved {len(current_reservations)} reservations to {self.reservation_file}")
             return True
         except Exception as e:

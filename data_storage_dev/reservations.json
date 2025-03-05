@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "res_20250305135443",
+    "restaurant_id": "rest_1",
+    "customer_name": "Sahil",
+    "date": "2025-03-05",
+    "time": "15:30",
+    "party_size": 2,
+    "email": "test@example.com",
+    "phone": null,
+    "status": "confirmed",
+    "created_at": "2025-03-05 13:54:43"
+  }
+]
