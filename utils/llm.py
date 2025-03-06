@@ -3,6 +3,7 @@ import json
 import requests
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+import re
 
 class LLMService:
     """Simple service for interacting with a language model API"""
@@ -13,6 +14,7 @@ class LLMService:
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
         self.model = model
         self.tool_definitions = []
+        self.tools = []  # Add this new attribute
         
         # Keep a simple conversation memory
         self.conversation_memory = []
@@ -20,6 +22,7 @@ class LLMService:
     def register_tools(self, tools):
         """Register tools that the LLM can call"""
         self.tool_definitions = tools
+        self.tools = tools  # Store in new attribute
     
     def process_message(self, user_message: str, customer_name: str = "") -> str:
         """
@@ -64,23 +67,70 @@ class LLMService:
             self.conversation_memory.append({"role": "assistant", "content": error_response})
             return error_response, None
     
-    def chat(self, messages, tools=True, temperature=0.7) -> Tuple[str, Optional[List]]:
-        """
-        Send a chat request to the LLM
-        
-        Args:
-            messages: List of message objects with role and content
-            tools: Whether to enable tool calling
-            temperature: Sampling temperature (0-1)
-        
-        Returns:
-            Tuple of (response_content, tool_calls)
-        """
-        # If we don't have an API key, use development mode
+    def chat(self, messages, tools=True, temperature=0.2) -> Tuple[str, Optional[List]]:
+        """Send a chat request to the LLM"""
         if not self.api_key:
             return self._simulate_response(messages)
         
-        # Prepare the API request
+        # Analyze the user's intent
+        last_user_message = ""
+        for msg in reversed(messages):
+            if msg["role"] == "user":
+                last_user_message = msg["content"].lower()
+                break
+        
+        # Determine which tool to use based on context
+        force_tool = None
+        tool_arguments = {}
+        
+        # Check if user is selecting a specific restaurant
+        if "go with" in last_user_message or "choose" in last_user_message or "select" in last_user_message:
+            force_tool = "get_restaurant_details"
+            # Extract restaurant name and find matching ID from previous search results
+            restaurant_name = None
+            restaurant_id = None
+            
+            # Look for the restaurant name in the last assistant message
+            for msg in reversed(messages):
+                if msg["role"] == "assistant" and "**" in msg["content"]:
+                    # Extract restaurant names and IDs from the previous search results
+                    matches = re.findall(r'\*\*(.*?)\*\* - .*?rest_\d+', msg["content"])
+                    if matches:
+                        for match in matches:
+                            if match.lower() in last_user_message.lower():
+                                # Extract the restaurant ID
+                                id_match = re.search(r'(rest_\d+)', msg["content"])
+                                if id_match:
+                                    restaurant_id = id_match.group(1)
+                                    break
+                    break
+            
+            if restaurant_id:
+                tool_arguments = {"restaurant_id": restaurant_id}
+            else:
+                # If we can't find the ID, do a new search
+                force_tool = "search_restaurants"
+                # Extract cuisine from previous search if available
+                for msg in reversed(messages):
+                    if msg["role"] == "assistant" and any(cuisine in msg["content"].lower() for cuisine in ["indian", "italian", "chinese"]):
+                        for cuisine in ["indian", "italian", "chinese"]:
+                            if cuisine in msg["content"].lower():
+                                tool_arguments = {"cuisine": cuisine.capitalize()}
+                                break
+                        break
+        
+        # Check if this is a search request
+        elif any(word in last_user_message for word in ["find", "search", "show", "list", "looking"]):
+            force_tool = "search_restaurants"
+            # Extract cuisine type if mentioned
+            for cuisine in ["italian", "chinese", "indian", "japanese", "thai"]:
+                if cuisine in last_user_message:
+                    tool_arguments["cuisine"] = cuisine.capitalize()
+            # Extract location if mentioned
+            for location in ["downtown", "uptown", "waterfront"]:
+                if location in last_user_message:
+                    tool_arguments["location"] = location.capitalize()
+        
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -95,9 +145,15 @@ class LLMService:
         
         # Add tools if requested and available
         if tools and self.tool_definitions:
-            data["tools"] = self.tool_definitions
+            data["functions"] = [tool["function"] for tool in self.tool_definitions]
+            
+            # Force specific tool usage if determined
+            if force_tool:
+                data["function_call"] = {
+                    "name": force_tool,
+                    "arguments": json.dumps(tool_arguments)
+                }
         
-        # Send the request
         try:
             response = requests.post(
                 self.api_url,
@@ -106,21 +162,46 @@ class LLMService:
                 timeout=30
             )
             
-            # Check for errors
+            if response.status_code == 429:  # Rate limit error
+                print("Rate limit reached, falling back to previous results")
+                return "I already have the information you need. Let me help you with that.", None
+            
             if response.status_code != 200:
                 print(f"API Error {response.status_code}: {response.text}")
-                return f"I'm having trouble connecting to my brain right now (Error {response.status_code}). Let me try a different approach.", None
+                if force_tool:
+                    # Create a manual tool call
+                    tool_calls = [{
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {
+                            "name": force_tool,
+                            "arguments": json.dumps(tool_arguments)
+                        }
+                    }]
+                    return "Let me help you with that.", tool_calls
+                return "I apologize, but I'm having trouble processing your request. Could you please try again?", None
             
             result = response.json()
-            
-            # Extract content and tool calls
             message = result["choices"][0]["message"]
             content = message.get("content", "")
-            tool_calls = message.get("tool_calls", None)
             
-            return content, tool_calls
+            # Handle function calls
+            function_call = message.get("function_call")
+            if function_call:
+                tool_calls = [{
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": function_call["name"],
+                        "arguments": function_call["arguments"]
+                    }
+                }]
+                return content, tool_calls
+            
+            return content, None
+        
         except Exception as e:
-            print(f"Error calling LLM API: {e}")
+            print(f"Error calling LLM API: {str(e)}")
             return self._simulate_response(messages)
     
     def _simulate_response(self, messages) -> Tuple[str, Optional[List]]:

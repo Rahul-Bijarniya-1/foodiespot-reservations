@@ -11,7 +11,8 @@ from utils.prompts import (
     get_base_prompt,
     get_search_prompt,
     get_reservation_prompt,
-    get_confirmation_prompt
+    get_confirmation_prompt,
+    get_enhanced_reservation_prompt
 )
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     'get_base_prompt',
     'get_search_prompt',
     'get_reservation_prompt',
-    'get_confirmation_prompt'
+    'get_confirmation_prompt',
+    'get_enhanced_reservation_prompt'
 ]

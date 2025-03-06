@@ -18,7 +18,8 @@ from utils import (
     get_base_prompt,
     get_search_prompt,
     get_reservation_prompt,
-    get_confirmation_prompt
+    get_confirmation_prompt,
+    get_enhanced_reservation_prompt
 )
 import tools
 
@@ -56,28 +57,40 @@ def show_debug_info():
         reservations = data_store.get_all_reservations()
         st.write(f"**Reservations in database:** {len(reservations)}")
 
+        # Add tool registration info
+        st.write(f"**Registered Tools:** {len(llm.tool_definitions)}")
+        if llm.tool_definitions:
+            for tool in llm.tool_definitions:
+                st.write(f"- {tool['function']['name']}")
+        else:
+            st.write("*No tools registered*")
+
 # Define tools for the LLM
 def register_tools():
+    """
+    Register tools for the LLM with improved descriptions and parameter formatting
+    to encourage proper tool usage
+    """
     tool_definitions = [
         {
             "type": "function",
             "function": {
                 "name": "search_restaurants",
-                "description": "Search for restaurants based on criteria",
+                "description": "ALWAYS use this tool FIRST to find restaurants based on criteria. You must use this before getting details or making reservations.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "cuisine": {
                             "type": "string",
-                            "description": "Type of cuisine (e.g., Italian, Japanese)"
+                            "description": "Type of cuisine (e.g., Italian, Japanese, Indian, Thai)"
                         },
                         "location": {
                             "type": "string", 
-                            "description": "Restaurant location"
+                            "description": "Restaurant location (e.g., Downtown, Uptown, West Side)"
                         },
                         "price_range": {
                             "type": "integer",
-                            "description": "Maximum price range (1-4)"
+                            "description": "Maximum price range (1-4, where 1 is least expensive)"
                         },
                         "party_size": {
                             "type": "integer",
@@ -92,13 +105,13 @@ def register_tools():
             "type": "function",
             "function": {
                 "name": "get_restaurant_details",
-                "description": "Get detailed information about a restaurant",
+                "description": "Use this tool AFTER search_restaurants to get detailed information about a specific restaurant. You MUST use the restaurant_id from search results.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "restaurant_id": {
                             "type": "string",
-                            "description": "ID of the restaurant"
+                            "description": "ID of the restaurant (e.g., rest_1, rest_2) - must use ID from search_restaurants results"
                         }
                     },
                     "required": ["restaurant_id"]
@@ -109,21 +122,21 @@ def register_tools():
             "type": "function",
             "function": {
                 "name": "check_availability",
-                "description": "Check available time slots for a restaurant on a specific date",
+                "description": "Use this tool AFTER get_restaurant_details to check available time slots for a restaurant on a specific date. You MUST have a restaurant_id from previous steps.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "restaurant_id": {
                             "type": "string",
-                            "description": "ID of the restaurant"
+                            "description": "ID of the restaurant (e.g., rest_1, rest_2) - must use ID from search_restaurants results"
                         },
                         "date": {
                             "type": "string",
-                            "description": "Date in YYYY-MM-DD format"
+                            "description": "Date in YYYY-MM-DD format (e.g., 2025-03-06)"
                         },
                         "time": {
                             "type": "string",
-                            "description": "Preferred time in HH:MM format"
+                            "description": "Preferred time in HH:MM format, 24-hour clock (e.g., 19:30 for 7:30 PM)"
                         },
                         "party_size": {
                             "type": "integer",
@@ -138,25 +151,25 @@ def register_tools():
             "type": "function",
             "function": {
                 "name": "make_reservation",
-                "description": "Make a restaurant reservation",
+                "description": "Use this tool ONLY AFTER checking availability to make a restaurant reservation. This is the ONLY way to create a valid reservation.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "restaurant_id": {
                             "type": "string",
-                            "description": "ID of the restaurant"
+                            "description": "ID of the restaurant (e.g., rest_1, rest_2) - must use ID from search_restaurants results"
                         },
                         "customer_name": {
                             "type": "string",
-                            "description": "Name of the customer"
+                            "description": "Full name of the customer"
                         },
                         "date": {
                             "type": "string",
-                            "description": "Date in YYYY-MM-DD format"
+                            "description": "Date in YYYY-MM-DD format (e.g., 2025-03-06)"
                         },
                         "time": {
                             "type": "string",
-                            "description": "Time in HH:MM format"
+                            "description": "Time in HH:MM format, 24-hour clock (e.g., 19:30 for 7:30 PM)"
                         },
                         "party_size": {
                             "type": "integer",
@@ -164,11 +177,11 @@ def register_tools():
                         },
                         "email": {
                             "type": "string",
-                            "description": "Customer email address"
+                            "description": "Customer email address for confirmation"
                         },
                         "phone": {
                             "type": "string",
-                            "description": "Customer phone number"
+                            "description": "Customer phone number for contact"
                         }
                     },
                     "required": ["restaurant_id", "customer_name", "date", "time", "party_size"]
@@ -177,7 +190,16 @@ def register_tools():
         }
     ]
     
+    # Register the tool definitions with the LLM service
     llm.register_tools(tool_definitions)
+    
+    # Print tool registration success in debug mode
+    # if DEBUG:
+    #     print(f"✅ Registered {len(tool_definitions)} tools for LLM use")
+    #     for tool in tool_definitions:
+    #         print(f"  - {tool['function']['name']}: {tool['function']['description'][:50]}...")
+
+register_tools()
 
 # Helper function to format preferences
 def format_preferences(preferences):
@@ -191,6 +213,149 @@ def format_preferences(preferences):
     
     return result
 
+def log_tool_calls(messages, tool_calls):
+    """Log tool calls to the debug sidebar"""
+    if not DEBUG:
+        return
+    
+    with st.sidebar.expander("LLM Tool Calls", expanded=True):
+        st.write(f"Number of tool calls: {len(tool_calls) if tool_calls else 0}")
+        
+        if tool_calls:
+            for i, call in enumerate(tool_calls):
+                st.write(f"### Tool Call #{i+1}")
+                function_name = call["function"]["name"]
+                st.write(f"Function: **{function_name}**")
+                
+                try:
+                    arguments = json.loads(call["function"]["arguments"])
+                    st.json(arguments)
+                except:
+                    st.code(call["function"]["arguments"])
+
+def is_valid_date_format(date_str):
+    """Check if date is in YYYY-MM-DD format"""
+    import re
+    return bool(re.match(r"\d{4}-\d{2}-\d{2}", date_str))
+
+def is_valid_time_format(time_str):
+    """Check if time is in HH:MM format"""
+    import re
+    return bool(re.match(r"\d{2}:\d{2}", time_str))
+
+def validate_reservation_parameters(arguments):
+    """Validate reservation parameters and fix common issues"""
+    required_params = ["restaurant_id", "customer_name", "date", "time", "party_size"]
+    
+    # Check for missing parameters
+    missing = [param for param in required_params if param not in arguments]
+    if missing:
+        return False, f"Missing required parameters: {', '.join(missing)}"
+    
+    # Validate and fix date format if needed
+    date = arguments.get("date")
+    if date and not is_valid_date_format(date):
+        try:
+            # Try to convert to YYYY-MM-DD format
+            import datetime
+            import re
+            
+            # Check if it's in MM/DD/YYYY format
+            if re.match(r"\d{1,2}/\d{1,2}/\d{4}", date):
+                month, day, year = date.split("/")
+                arguments["date"] = f"{year}-{int(month):02d}-{int(day):02d}"
+            # Other formats can be handled here
+            else:
+                return False, f"Could not parse date format: {date}"
+        except:
+            return False, f"Invalid date format: {date}"
+    
+    # Validate and fix time format if needed
+    time = arguments.get("time")
+    if time and not is_valid_time_format(time):
+        try:
+            # Try to convert to 24-hour format
+            import re
+            import datetime
+            
+            # Check if it's in 12-hour format with AM/PM
+            am_pm_match = re.match(r"(\d{1,2}):?(\d{2})?\s*(AM|PM)", time, re.IGNORECASE)
+            if am_pm_match:
+                hour, minute, period = am_pm_match.groups()
+                hour = int(hour)
+                minute = int(minute) if minute else 0
+                
+                # Adjust hour for PM
+                if period.upper() == "PM" and hour < 12:
+                    hour += 12
+                elif period.upper() == "AM" and hour == 12:
+                    hour = 0
+                
+                arguments["time"] = f"{hour:02d}:{minute:02d}"
+            else:
+                return False, f"Could not parse time format: {time}"
+        except:
+            return False, f"Invalid time format: {time}"
+    
+    # Convert party_size to integer if it's a string
+    if isinstance(arguments.get("party_size"), str):
+        try:
+            arguments["party_size"] = int(arguments["party_size"])
+        except:
+            return False, f"Invalid party size: {arguments['party_size']}"
+    
+    return True, "Parameters are valid"
+
+def add_reservation_debug():
+    """Add extra debug information for reservations"""
+    # Display all available restaurants
+    st.sidebar.subheader("Available Restaurants")
+    restaurants = data_store.get_all_restaurants()
+    
+    # Show first 5 restaurants for easy reference
+    for i, rest in enumerate(restaurants[:5]):
+        st.sidebar.markdown(f"**{rest.name}** (ID: `{rest.id}`)")
+        st.sidebar.markdown(f"Cuisine: {rest.cuisine} | Location: {rest.location}")
+        st.sidebar.markdown("---")
+    
+    # Add reservation monitor
+    st.sidebar.subheader("Reservation Monitor")
+    if st.sidebar.button("Check Reservations"):
+        reservations = data_store.get_all_reservations()
+        if reservations:
+            st.sidebar.success(f"Found {len(reservations)} reservations")
+            for res in reservations:
+                rest = data_store.get_restaurant(res.restaurant_id)
+                rest_name = rest.name if rest else "Unknown Restaurant"
+                st.sidebar.markdown(f"• {res.date} at {res.time} - {rest_name} for {res.party_size} people")
+        else:
+            st.sidebar.warning("No reservations found in system")
+            
+            # Check if file exists
+            import os
+            if os.path.exists(data_store.reservation_file):
+                try:
+                    with open(data_store.reservation_file, 'r') as f:
+                        content = f.read()
+                    st.sidebar.code(content, language="json")
+                except Exception as e:
+                    st.sidebar.error(f"Error reading file: {str(e)}")
+            else:
+                st.sidebar.error(f"Reservation file not found: {data_store.reservation_file}")
+                
+    # Add restaurant lookup
+    st.sidebar.subheader("Restaurant Lookup")
+    restaurant_name = st.sidebar.text_input("Enter name to search")
+    if restaurant_name and st.sidebar.button("Search Restaurants"):
+        matching = [r for r in restaurants if restaurant_name.lower() in r.name.lower()]
+        if matching:
+            st.sidebar.success(f"Found {len(matching)} matching restaurants")
+            for m in matching:
+                st.sidebar.markdown(f"**{m.name}** (ID: `{m.id}`)")
+                st.sidebar.markdown(f"Cuisine: {m.cuisine} | Location: {m.location}")
+        else:
+            st.sidebar.warning(f"No restaurants found with name '{restaurant_name}'")
+
 # Execute a tool call from the LLM
 def execute_tool_call(tool_call):
     try:
@@ -200,7 +365,7 @@ def execute_tool_call(tool_call):
         # Log tool call if in debug mode
         if DEBUG:
             print(f"Executing tool: {function_name}")
-            print(f"Arguments: {arguments}")
+            print(f"Arguments: {json.dumps(arguments, indent=2)}")
         
         if function_name == "search_restaurants":
             restaurants = tools.search_restaurants(
@@ -229,26 +394,58 @@ def execute_tool_call(tool_call):
             )
             return format_available_times(arguments.get("date"), available_times)
         
+        # Modified version of execute_tool_call for the make_reservation case
         elif function_name == "make_reservation":
-            success, result = tools.make_reservation(
-                data_store=data_store,
-                restaurant_id=arguments.get("restaurant_id"),
-                customer_name=arguments.get("customer_name"),
-                date=arguments.get("date"),
-                time=arguments.get("time"),
-                party_size=arguments.get("party_size"),
-                email=arguments.get("email"),
-                phone=arguments.get("phone")
-            )
+            # Validate and fix parameters
+            valid, message = validate_reservation_parameters(arguments)
             
-            if success:
-                restaurant = tools.get_restaurant_details(
+            if not valid:
+                if DEBUG:
+                    st.sidebar.error(f"Invalid parameters: {message}")
+                return f"I couldn't make the reservation because of a technical issue: {message}"
+            
+            # Debug output
+            if DEBUG:
+                st.sidebar.write("### LLM Reservation Attempt")
+                st.sidebar.write(f"Arguments after validation: {arguments}")
+            
+            # More verbose logging for this specific case
+            try:
+                success, result = tools.make_reservation(
                     data_store=data_store,
-                    restaurant_id=arguments.get("restaurant_id")
+                    restaurant_id=arguments.get("restaurant_id"),
+                    customer_name=arguments.get("customer_name"),
+                    date=arguments.get("date"),
+                    time=arguments.get("time"),
+                    party_size=arguments.get("party_size"),
+                    email=arguments.get("email"),
+                    phone=arguments.get("phone")
                 )
-                return format_reservation_confirmation(result, restaurant)
-            else:
-                return f"Sorry, I couldn't make the reservation: {result}"
+                
+                if DEBUG:
+                    if success:
+                        st.sidebar.success(f"✅ Reservation successful: {result.id}")
+                    else:
+                        st.sidebar.error(f"❌ Reservation failed: {result}")
+                    
+                    # Check if the reservation was saved correctly
+                    reservations = data_store.get_all_reservations()
+                    st.sidebar.write(f"Current reservations: {len(reservations)}")
+                
+                if success:
+                    restaurant = tools.get_restaurant_details(
+                        data_store=data_store,
+                        restaurant_id=arguments.get("restaurant_id")
+                    )
+                    return format_reservation_confirmation(result, restaurant)
+                else:
+                    return f"Sorry, I couldn't make the reservation: {result}"
+            except Exception as e:
+                if DEBUG:
+                    import traceback
+                    st.sidebar.error(f"Exception in make_reservation: {str(e)}")
+                    st.sidebar.code(traceback.format_exc())
+                return f"Sorry, I couldn't make the reservation due to an error: {str(e)}"
         
         else:
             return f"I don't know how to execute the tool '{function_name}'"
@@ -277,7 +474,6 @@ def main():
         with st.spinner("Setting up restaurant data..."):
             # Only print message once
             did_generate = generate_sample_data(data_store, debug=False)
-            register_tools()
         st.session_state.data_initialized = True
     
     # Initialize chat history
@@ -335,7 +531,7 @@ def main():
                         system_prompt = get_search_prompt(user_name=st.session_state.user_name)
                     elif any(word in user_message for word in ["book", "reserve", "reservation", "time", "date"]):
                         # Use reservation-focused prompt
-                        system_prompt = get_reservation_prompt(
+                        system_prompt = get_enhanced_reservation_prompt(
                             user_name=st.session_state.user_name,
                             current_date=current_date
                         )
@@ -346,18 +542,66 @@ def main():
                             current_date=current_date
                         )
                     
+                    # In the main chat loop, update the system prompt addition:
+                    CRITICAL_TOOL_INSTRUCTIONS = """
+                    CRITICAL INSTRUCTIONS FOR TOOL USAGE:
+                    1. For initial restaurant search:
+                       - Use search_restaurants with cuisine and/or location
+                       - ALWAYS include restaurant IDs in search results
+                       Example: search_restaurants({"cuisine": "Italian"})
+
+                    2. When user selects a specific restaurant:
+                       - Use get_restaurant_details with the EXACT restaurant_id from search results
+                       - NEVER use restaurant names as IDs
+                       Example: get_restaurant_details({"restaurant_id": "rest_1"})
+
+                    3. For checking availability:
+                       - Use check_availability with the EXACT restaurant_id
+                       Example: check_availability({"restaurant_id": "rest_1", "date": "2025-03-05"})
+
+                    4. For making reservations:
+                       - Use make_reservation with the EXACT restaurant_id
+                       Example: make_reservation({"restaurant_id": "rest_1", "date": "2025-03-05", ...})
+
+                    NEVER make up restaurant information. ALWAYS use the appropriate tool for each step.
+                    ALWAYS include restaurant IDs in your responses when listing restaurants.
+                    """
+                    
+                    # Update the system prompt in the messages list
                     messages = [
-                        {"role": "system", "content": system_prompt},
+                        {"role": "system", "content": system_prompt + CRITICAL_TOOL_INSTRUCTIONS}
                     ]
                     
                     # Add chat history (last 5 messages)
                     for msg in st.session_state.messages[-5:]:
                         messages.append({"role": msg["role"], "content": msg["content"]})
+
+
+                    # Before the LLM call
+                    if DEBUG:
+                        print("System prompt:", system_prompt)
+                        print("Messages:", messages)
+                        print("Tools enabled:", True)
+                        print("Registered tools:", len(llm.tool_definitions))  # Use tool_definitions instead
+    
+                        # Add more detailed tool logging
+                        for tool in llm.tool_definitions:
+                            print(f"- {tool['function']['name']}")
                     
                     # Call the LLM
                     try:
                         # For tool-enabled mode
                         content, tool_calls = llm.chat(messages, tools=True)
+                        print("Tool calls returned:", tool_calls)
+                        
+                        # Debug: Log the messages sent to the LLM
+                        if DEBUG:
+                            with st.sidebar.expander("Messages Sent to LLM"):
+                                for msg in messages:
+                                    st.write(f"**{msg['role']}**: {msg['content'][:100]}...")
+                        
+                        # Log tool calls if any
+                        log_tool_calls(messages, tool_calls)
                         
                         # Process tool calls if any
                         if tool_calls:
@@ -475,6 +719,17 @@ def main():
                             st.error(f"Reservation file does not exist: {data_store.reservation_file}")
                     else:
                         st.error(f"Reservation failed: {result}")
+
+    # Add debug section for forcing a reservation
+    if DEBUG and st.session_state.user_name:
+        with st.sidebar.expander("Debug: Force Reservation Intent"):
+            if st.button("Force LLM to Make a Reservation"):
+                # Add a message to the chat history instructing to make a reservation
+                restaurant = data_store.get_restaurant("rest_1")
+                if restaurant:
+                    force_msg = f"Please make a reservation at {restaurant.name} for tomorrow at 7:00 PM for 2 people. My name is {st.session_state.user_name}."
+                    st.session_state.messages.append({"role": "user", "content": force_msg})
+                    st.experimental_rerun()
 
 if __name__ == "__main__":
     main()

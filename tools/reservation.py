@@ -31,6 +31,15 @@ def make_reservation(data_store, restaurant_id, customer_name, date, time,
     if party_size > restaurant.capacity:
         return False, f"Party size exceeds restaurant capacity ({restaurant.capacity})"
     
+    # Validate inputs
+    valid, message = validate_reservation_data(
+        data_store, restaurant_id, date, time, party_size
+    )
+    
+    if not valid:
+        return False, message
+
+
     # Check if the time slot is available
     available_slots = check_availability(
         data_store=data_store,
@@ -178,3 +187,46 @@ def cancel_reservation(data_store, reservation_id):
     data_store.add_reservation(reservation)
     
     return True, "Reservation successfully cancelled"
+
+def validate_reservation_data(data_store, restaurant_id, date, time, party_size):
+    """
+    Validate reservation data before sending to the LLM
+    
+    Args:
+        data_store: Data storage instance
+        restaurant_id: ID of the restaurant
+        date: Date in YYYY-MM-DD format
+        time: Time in HH:MM format
+        party_size: Size of the party
+    
+    Returns:
+        (valid, message) - Tuple with validation status and message
+    """
+    # Check if restaurant exists
+    restaurant = data_store.get_restaurant(restaurant_id)
+    if not restaurant:
+        return False, f"Restaurant with ID '{restaurant_id}' does not exist."
+    
+    # Check date format
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return False, f"Invalid date format. Please use YYYY-MM-DD format."
+    
+    # Check time format
+    try:
+        hours, minutes = time.split(":")
+        if not (0 <= int(hours) <= 23 and 0 <= int(minutes) <= 59):
+            return False, f"Invalid time: {time}. Please use HH:MM format (24-hour)."
+    except (ValueError, IndexError):
+        return False, f"Invalid time format. Please use HH:MM format."
+    
+    # Check party size
+    if not isinstance(party_size, int) or party_size <= 0:
+        return False, f"Invalid party size: {party_size}. Must be a positive number."
+    
+    # Check if party size exceeds restaurant capacity
+    if party_size > restaurant.capacity:
+        return False, f"Party size {party_size} exceeds restaurant capacity of {restaurant.capacity}."
+    
+    return True, "Validation successful"
