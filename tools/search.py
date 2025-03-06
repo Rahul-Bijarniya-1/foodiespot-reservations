@@ -40,16 +40,29 @@ def search_restaurants(data_store, cuisine=None, location=None,
 
 def get_restaurant_details(data_store, restaurant_id):
     """
-    Get detailed information about a restaurant
+    Get detailed information about a restaurant by ID or name
     
     Args:
         data_store: Data storage instance
-        restaurant_id: ID of the restaurant
+        restaurant_id: ID of the restaurant OR name of the restaurant
     
     Returns:
         Restaurant object or None if not found
     """
-    return data_store.get_restaurant(restaurant_id)
+    # First try to get restaurant directly by ID
+    restaurant = data_store.get_restaurant(restaurant_id)
+    
+    # If not found by ID, try to search by name
+    if not restaurant:
+        # Get all restaurants and search by name (case-insensitive)
+        all_restaurants = data_store.get_all_restaurants()
+        for rest in all_restaurants:
+            # Check if the provided ID is actually a restaurant name
+            if restaurant_id.lower() in rest.name.lower():
+                restaurant = rest
+                break
+    
+    return restaurant
 
 def recommend_restaurants(data_store, preferences, limit=3):
     """

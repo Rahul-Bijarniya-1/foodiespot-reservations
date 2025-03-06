@@ -45,6 +45,10 @@ class ConversationManager:
         # Initial response without tool calls
         if not tool_calls:
             return response_content, [], messages
+        
+        print(response_content,"\n")
+              
+        # print(tool_calls,"\n")
             
         # Process tool calls
         tool_results = []

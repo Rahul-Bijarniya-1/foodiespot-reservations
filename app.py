@@ -17,7 +17,7 @@ from ui import (
 )
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Check environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
