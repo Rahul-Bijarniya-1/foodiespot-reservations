@@ -10,61 +10,15 @@ class LLMService:
     def __init__(self, api_key=None, model="llama3-8b-8192"):
         """Initialize the LLM service"""
         self.api_key = api_key or os.environ.get("LLM_API_KEY")
-        self.api_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.api_url = os.getenv("LLM_API_URL", "https://api.groq.com/openai/v1/chat/completions")
         self.model = model
         self.tool_definitions = []
-        
-        # Keep a simple conversation memory
-        self.conversation_memory = []
     
     def register_tools(self, tools):
         """Register tools that the LLM can call"""
         self.tool_definitions = tools
     
-    def process_message(self, user_message: str, customer_name: str = "") -> str:
-        """
-        Process a user message and generate a response
-        
-        Args:
-            user_message: The user's message
-            customer_name: The name of the customer (optional)
-            
-        Returns:
-            Generated response from the LLM
-        """
-        # Add message to memory
-        self.conversation_memory.append({"role": "user", "content": user_message})
-        
-        # Prepare system prompt with customer info
-        system_prompt = f"You are a helpful restaurant reservation assistant for FoodieSpot."
-        if customer_name:
-            system_prompt += f" You're speaking with {customer_name}."
-        system_prompt += " Help them find restaurants and make reservations."
-        
-        # Prepare messages for LLM
-        messages = [
-            {"role": "system", "content": system_prompt}
-        ]
-        
-        # Add recent conversation history (last 5 messages)
-        if len(self.conversation_memory) > 0:
-            for msg in self.conversation_memory[-5:]:
-                messages.append(msg)
-        
-        # Get LLM response
-        try:
-            content, tool_calls = self.chat(messages)
-            
-            # Add response to memory
-            self.conversation_memory.append({"role": "assistant", "content": content})
-            
-            return content, tool_calls
-        except Exception as e:
-            error_response = f"I apologize, but I'm having trouble processing your request right now. Error: {str(e)}"
-            self.conversation_memory.append({"role": "assistant", "content": error_response})
-            return error_response, None
-    
-    def chat(self, messages, tools=True, temperature=0.7) -> Tuple[str, Optional[List]]:
+    def chat(self, messages, tools=True, temperature=0.2) -> Tuple[str, Optional[List]]:
         """
         Send a chat request to the LLM
         
@@ -76,9 +30,9 @@ class LLMService:
         Returns:
             Tuple of (response_content, tool_calls)
         """
-        # If we don't have an API key, use development mode
+        # If we don't have an API key, return an error
         if not self.api_key:
-            return self._simulate_response(messages)
+            return "Sorry, I'm not able to process your request without my API key. Please check your .env file.", None
         
         # Prepare the API request
         headers = {
@@ -109,7 +63,7 @@ class LLMService:
             # Check for errors
             if response.status_code != 200:
                 print(f"API Error {response.status_code}: {response.text}")
-                return f"I'm having trouble connecting to my brain right now (Error {response.status_code}). Let me try a different approach.", None
+                return f"I'm having trouble connecting to my brain right now (Error {response.status_code}). Please check your API key and configuration.", None
             
             result = response.json()
             
@@ -121,61 +75,4 @@ class LLMService:
             return content, tool_calls
         except Exception as e:
             print(f"Error calling LLM API: {e}")
-            return self._simulate_response(messages)
-    
-    def _simulate_response(self, messages) -> Tuple[str, Optional[List]]:
-        """Simulate an LLM response for development without an API key"""
-        # Get the last user message
-        user_message = ""
-        for msg in reversed(messages):
-            if msg["role"] == "user":
-                user_message = msg["content"].lower()
-                break
-        
-        # Simple keyword-based responses for development
-        if "hello" in user_message or "hi" in user_message:
-            return "Hello! I'm your restaurant reservation assistant. How can I help you today?", None
-        
-        if "restaurant" in user_message:
-            if "italian" in user_message:
-                return "I'd be happy to help you find an Italian restaurant. What area would you like to dine in?", [
-                    {
-                        "id": "call_search",
-                        "type": "function",
-                        "function": {
-                            "name": "search_restaurants",
-                            "arguments": json.dumps({"cuisine": "Italian", "limit": 3})
-                        }
-                    }
-                ]
-            
-            if "search" in user_message:
-                return "I'll help you search for restaurants. Could you tell me what cuisine you're interested in?", None
-        
-        if "reservation" in user_message or "book" in user_message:
-            return "I'd be happy to help you make a reservation. Which restaurant would you like to book?", None
-        
-        if "available" in user_message or "time" in user_message:
-            return "I can check availability for you. Which restaurant and what date are you interested in?", None
-        
-        # Default response
-        return "I'm here to help you find and book restaurants. What are you looking for today?", None
-    
-    def parse_tool_call(self, response: str) -> Optional[Dict[str, Any]]:
-        """Parse tool calling format from LLM response text"""
-        try:
-            lines = response.strip().split('\n')
-            tool_call = {}
-            
-            for line in lines:
-                if line.startswith('TOOL:'):
-                    tool_call['name'] = line.replace('TOOL:', '').strip()
-                elif line.startswith('PARAMS:'):
-                    params_str = line.replace('PARAMS:', '').strip()
-                    tool_call['parameters'] = json.loads(params_str)
-            
-            return tool_call if 'name' in tool_call else None
-            
-        except (json.JSONDecodeError, ValueError) as e:
-            print(f"Error parsing tool call: {e}")
-            return None
+            return f"I encountered an error while processing your request: {str(e)}", None
